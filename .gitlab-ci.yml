@@ -1,6 +1,9 @@
 include:
   - project: internal/templates
-    file: /gitlab-ci/includes/StrapiBuildDeploy.yaml
+    file: /gitlab-ci/includes/jobs.yaml
+
+Build:
+  extends: .build
 
 Push to Docker Hub:
   stage: deploy

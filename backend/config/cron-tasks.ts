@@ -12,7 +12,9 @@ export default {
         date: {
           $gte: DateTime.now().toISODate(),
         },
+        isReturnEvent: false,
       },
+      populate: { linkedEvent: { populate: ["travels", "passengers"] } },
       limit: -1,
     });
 
@@ -31,8 +33,18 @@ export default {
         date: {
           $eq: DateTime.now().minus({ day: 1 }).toISODate(),
         },
+        isReturnEvent: false,
       },
-      populate: ["travels", "passengers", "passengers.travel"],
+      populate: {
+        linkedEvents: {
+          populate: {
+            travels: true,
+            passengers: { populate: { passengers: true } },
+          },
+        },
+        travels: true,
+        passengers: { populate: { passengers: true } },
+      },
       limit: -1,
     });
     await pMap(events, strapi.service("api::event.event").sendEndRecap, {

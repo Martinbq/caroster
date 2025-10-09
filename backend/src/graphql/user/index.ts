@@ -67,6 +67,10 @@ export default [
               delete userUpdate.oldPassword;
             }
 
+            const isStrapiUser = user.provider === "local";
+            if (userUpdate.email && isStrapiUser)
+              userUpdate.username = userUpdate.email;
+
             const currentEvents = user.events || [];
             const currentEventIds = currentEvents.map((event) => `${event.id}`);
             const userUpdateEvents = userUpdate.events?.filter(

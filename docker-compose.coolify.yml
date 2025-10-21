@@ -6,16 +6,14 @@ services:
     environment:
       POSTGRES_DB: caroster
       POSTGRES_USER: caroster
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-caroster123}
+      POSTGRES_PASSWORD: caroster123
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
-    networks:
-      - caroster
 
-  backend:
+  app:
     image: node:18-alpine
-    working_dir: /app
+    working_dir: /workspace
     environment:
       NODE_ENV: production
       DATABASE_CLIENT: postgres
@@ -23,63 +21,50 @@ services:
       DATABASE_PORT: 5432
       DATABASE_NAME: caroster
       DATABASE_USERNAME: caroster
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-caroster123}
-      DATABASE_SSL: false
-      JWT_SECRET: ${JWT_SECRET:-supersecretjwtkey32characterslong}
-      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-superadminsecret32characterslong}
-      API_TOKEN_SALT: ${API_TOKEN_SALT:-apitokensalt32characterslong123}
-      TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT:-transfersalt32characterslong12}
-      APP_KEYS: ${APP_KEYS:-key1,key2,key3,key4}
+      DATABASE_PASSWORD: caroster123
+      JWT_SECRET: supersecretjwtkey32characterslong
+      ADMIN_JWT_SECRET: superadminsecret32characterslong
+      API_TOKEN_SALT: apitokensalt32characterslong123
+      TRANSFER_TOKEN_SALT: transfersalt32characterslong12
+      APP_KEYS: key1,key2,key3,key4
       HOST: 0.0.0.0
-      PORT: 1337
+      PORT: 3000
     volumes:
-      - uploads:/app/public/uploads
+      - .:/workspace
     command: >
       sh -c "
-        echo 'Copying backend files...' &&
-        cp -r /tmp/backend/* /app/ &&
-        echo 'Installing backend dependencies...' &&
-        npm ci --only=production &&
-        echo 'Building backend...' &&
-        npm run build &&
-        echo 'Starting backend...' &&
-        npm start
+        echo 'Current directory:' && pwd &&
+        echo 'Listing files:' && ls -la &&
+        echo 'Checking backend directory:' && ls -la backend/ || echo 'Backend directory not found' &&
+        echo 'Checking frontend directory:' && ls -la frontend/ || echo 'Frontend directory not found' &&
+        if [ -d backend ]; then
+          echo 'Installing backend dependencies...' &&
+          cd backend &&
+          npm install --production &&
+          npm run build &&
+          npm start &
+          BACKEND_PID=$$! &&
+          cd .. &&
+          if [ -d frontend ]; then
+            echo 'Waiting for backend to start...' &&
+            sleep 30 &&
+            echo 'Installing frontend dependencies...' &&
+            cd frontend &&
+            npm install --production &&
+            npm run build &&
+            npm start
+          else
+            echo 'Frontend directory not found, only starting backend' &&
+            wait $$BACKEND_PID
+          fi
+        else
+          echo 'Backend directory not found, cannot start application' &&
+          tail -f /dev/null
+        fi
       "
     depends_on:
       - postgres
     restart: unless-stopped
-    networks:
-      - caroster
-
-  frontend:
-    image: node:18-alpine
-    working_dir: /app
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_STRAPI_URL: ${SERVICE_FQDN_FRONTEND}/api
-      PORT: 3000
-      HOST: 0.0.0.0
-    command: >
-      sh -c "
-        echo 'Copying frontend files...' &&
-        cp -r /tmp/frontend/* /app/ &&
-        echo 'Installing frontend dependencies...' &&
-        npm ci --only=production &&
-        echo 'Building frontend...' &&
-        npm run build &&
-        echo 'Starting frontend...' &&
-        npm start
-      "
-    depends_on:
-      - backend
-    restart: unless-stopped
-    networks:
-      - caroster
 
 volumes:
   postgres_data:
-  uploads:
-
-networks:
-  caroster:
-    driver: bridge

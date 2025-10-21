@@ -1,0 +1,22 @@
+FROM node:18-alpine
+
+# Install system dependencies
+RUN apk add --no-cache bash curl postgresql-client
+
+# Create temporary directories for source code
+RUN mkdir -p /tmp/backend /tmp/frontend
+
+# Copy backend source
+COPY backend/ /tmp/backend/
+
+# Copy frontend source  
+COPY frontend/ /tmp/frontend/
+
+# Create app directory
+WORKDIR /app
+
+# Expose ports
+EXPOSE 1337 3000
+
+# Default command (will be overridden by docker-compose)
+CMD ["echo", "Use docker-compose to start services"]
